@@ -70,7 +70,7 @@ def download_aurora_logs(rds_client, db_instance_identifier, output_dir, days=7,
                     is_current_day_log = True
             except Exception as e:
                 # 如果无法解析日期，则默认为当前日志
-                logger.warning(f"无法从文件名 {log_filename} 解析日期: {str(e)}")
+                logger.warning(f"Unable to parse date from filename {log_filename}: {str(e)}")
                 is_current_day_log = True
             
             # 检查是否已上传且非当日日志
@@ -79,12 +79,12 @@ def download_aurora_logs(rds_client, db_instance_identifier, output_dir, days=7,
                 s3_key = f"{s3_prefix}/{base_filename}"
                 
                 if s3_key in upload_record:
-                    logger.info(f"跳过已上传的非当日日志文件: {log_filename}")
+                    logger.info(f"Skipping previously uploaded non-current-day log file: {log_filename}")
                     skipped_files.append(upload_record[s3_key])
                     continue
             
             local_filename = os.path.join(output_dir, os.path.basename(log_filename))
-            logger.info(f"下载日志文件: {log_filename} (大小: {file_size} 字节)")
+            logger.info(f"Downloading log file: {log_filename} (size: {file_size} bytes)")
             
             # 获取日志文件内容
             log_content = ""
@@ -111,12 +111,12 @@ def download_aurora_logs(rds_client, db_instance_identifier, output_dir, days=7,
                 f.write(log_content)
                 
             downloaded_files.append(local_filename)
-            logger.info(f"已下载到: {local_filename}")
+            logger.info(f"Downloaded to: {local_filename}")
             
         return downloaded_files
         
     except Exception as e:
-        logger.error(f"下载Aurora日志时出错: {str(e)}")
+        logger.error(f"Error downloading Aurora logs: {str(e)}")
         raise
 
 def get_upload_record_from_s3(s3_client, bucket_name, record_key, local_record_file):
@@ -129,12 +129,12 @@ def get_upload_record_from_s3(s3_client, bucket_name, record_key, local_record_f
         
         # 从S3下载记录文件
         s3_client.download_file(bucket_name, record_key, local_record_file)
-        logger.info(f"已从S3下载上传记录: s3://{bucket_name}/{record_key}")
+        logger.info(f"Upload record downloaded from S3: s3://{bucket_name}/{record_key}")
         
         with open(local_record_file, 'r') as f:
             return json.load(f)
     except Exception as e:
-        logger.info(f"从S3获取上传记录失败，将使用本地记录: {str(e)}")
+        logger.info(f"Failed to get upload record from S3, will use local record: {str(e)}")
         # 如果从S3获取失败，使用本地记录
         return get_upload_record(local_record_file)
 
@@ -158,7 +158,7 @@ def save_upload_record(record_file, record):
         with open(record_file, 'w') as f:
             json.dump(record, f)
     except Exception as e:
-        logger.warning(f"保存上传记录文件失败: {str(e)}")
+        logger.warning(f"Failed to save upload record file: {str(e)}")
 
 def save_upload_record_to_s3(s3_client, bucket_name, record_key, record_file, record):
     """
@@ -170,9 +170,9 @@ def save_upload_record_to_s3(s3_client, bucket_name, record_key, record_file, re
         
         # 然后上传到S3
         s3_client.upload_file(record_file, bucket_name, record_key)
-        logger.info(f"上传记录已保存到S3: s3://{bucket_name}/{record_key}")
+        logger.info(f"Upload record saved to S3: s3://{bucket_name}/{record_key}")
     except Exception as e:
-        logger.warning(f"保存上传记录到S3失败: {str(e)}")
+        logger.warning(f"Failed to save upload record to S3: {str(e)}")
 
 def is_active_log_file(log_filename):
     """
@@ -218,14 +218,14 @@ def upload_to_s3(s3_client, file_path, bucket_name, s3_prefix=None, upload_recor
         
         # 检查是否已上传（对于非活跃日志文件）
         if not active_log and upload_record and s3_key in upload_record:
-            logger.info(f"文件已上传，跳过: {s3_key}")
+            logger.info(f"File already uploaded, skipping: {s3_key}")
             return upload_record[s3_key]
         
         # 对于活跃日志文件，显示覆盖上传信息
         if active_log:
-            logger.info(f"上传活跃日志文件到S3(覆盖模式): {file_path} -> s3://{bucket_name}/{s3_key}")
+            logger.info(f"Uploading active log file to S3 (overwrite mode): {file_path} -> s3://{bucket_name}/{s3_key}")
         else:
-            logger.info(f"上传文件到S3: {file_path} -> s3://{bucket_name}/{s3_key}")
+            logger.info(f"Uploading file to S3: {file_path} -> s3://{bucket_name}/{s3_key}")
         
         # 上传文件到S3
         s3_client.upload_file(
@@ -235,7 +235,7 @@ def upload_to_s3(s3_client, file_path, bucket_name, s3_prefix=None, upload_recor
         )
         
         s3_uri = f"s3://{bucket_name}/{s3_key}"
-        logger.info(f"上传成功: {s3_uri}")
+        logger.info(f"Upload successful: {s3_uri}")
         
         # 更新上传记录
         if upload_record is not None:
@@ -246,7 +246,7 @@ def upload_to_s3(s3_client, file_path, bucket_name, s3_prefix=None, upload_recor
         return s3_uri
         
     except Exception as e:
-        logger.error(f"上传到S3时出错: {str(e)}")
+        logger.error(f"Error uploading to S3: {str(e)}")
         raise
 
 def main():
@@ -255,8 +255,8 @@ def main():
     config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
     
     if not os.path.exists(config_file):
-        logger.error(f"配置文件不存在: {config_file}")
-        raise FileNotFoundError(f"配置文件不存在: {config_file}")
+        logger.error(f"Configuration file does not exist: {config_file}")
+        raise FileNotFoundError(f"Configuration file does not exist: {config_file}")
     
     config.read(config_file)
     
@@ -270,10 +270,10 @@ def main():
     db_instance_identifiers = [line.strip() for line in instance_config.splitlines() if line.strip()]
     
     if not db_instance_identifiers:
-        logger.error("配置文件中未找到有效的实例ID")
-        raise ValueError("配置文件中未找到有效的实例ID")
+        logger.error("No valid instance ID found in configuration file")
+        raise ValueError("No valid instance ID found in configuration file")
     
-    logger.info(f"已从配置文件加载配置: 区域={region_name}, 实例数量={len(db_instance_identifiers)}")
+    logger.info(f"Configuration loaded from config file: region={region_name}, number of instances={len(db_instance_identifiers)}")
     
     # 创建AWS客户端
     rds_client = boto3.client('rds', region_name=region_name)
@@ -281,7 +281,7 @@ def main():
     
     # 处理每个实例
     for db_instance_identifier in db_instance_identifiers:
-        logger.info(f"开始处理实例: {db_instance_identifier}")
+        logger.info(f"start handling instance: {db_instance_identifier}")
         
         # 创建带有当前日期的S3前缀
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -301,11 +301,11 @@ def main():
         
         # 从S3获取上传记录
         upload_record = get_upload_record_from_s3(s3_client, s3_bucket_name, record_key, record_file)
-        logger.info(f"已加载上传记录，已上传文件数: {len(upload_record)}")
+        logger.info(f"Upload record loaded, number of uploaded files: {len(upload_record)}")
         
         try:
             # 下载Aurora日志（只下载最近7天的，跳过已上传的非当日日志）
-            logger.info(f"开始从Aurora实例 {db_instance_identifier} 下载最近7天的日志")
+            logger.info(f"start download instance: {db_instance_identifier} download logs in 7 days")
             downloaded_files = download_aurora_logs(
                 rds_client, 
                 db_instance_identifier, 
@@ -316,7 +316,7 @@ def main():
             )
             
             if not downloaded_files:
-                logger.info(f"实例 {db_instance_identifier} 没有需要下载的日志文件")
+                logger.info(f"Instance {db_instance_identifier} does not have any log files to download or upload")
                 continue
             
             # 上传日志到S3（活跃日志文件会覆盖上传）
@@ -329,16 +329,16 @@ def main():
             # 将最终的上传记录保存到S3
             save_upload_record_to_s3(s3_client, s3_bucket_name, record_key, record_file, upload_record)
                 
-            logger.info(f"实例 {db_instance_identifier}: 成功上传 {len(uploaded_files)} 个文件到S3")
+            logger.info(f"Instance {db_instance_identifier}: success uploaded {len(uploaded_files)} to S3")
             
             # 清理临时文件
             for file_path in downloaded_files:
                 os.remove(file_path)
             
-            logger.info(f"实例 {db_instance_identifier}: 临时文件已清理")
+            logger.info(f"Instance {db_instance_identifier}: temp files cleaned up")
             
         except Exception as e:
-            logger.error(f"处理实例 {db_instance_identifier} 时出错: {str(e)}")
+            logger.error(f"handling instance {db_instance_identifier} errors: {str(e)}")
             # 即使出错，也保存当前的上传记录到S3
             save_upload_record_to_s3(s3_client, s3_bucket_name, record_key, record_file, upload_record)
             # 继续处理下一个实例，而不是中断整个程序
