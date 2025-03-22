@@ -32,12 +32,12 @@ def download_aurora_logs(rds_client, db_instance_identifier, output_dir, days=7,
         )
         
         log_files = response.get('DescribeDBLogFiles', [])
-        logger.info(f"找到 {len(log_files)} 个日志文件")
+        logger.info(f"found {len(log_files)} log files")
         
         # 计算7天前的日期
         cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
         current_date = datetime.datetime.now().date()
-        logger.info(f"只下载 {cutoff_date.strftime('%Y-%m-%d')} 之后的日志文件")
+        logger.info(f"only download after {cutoff_date.strftime('%Y-%m-%d')} log files")
         
         downloaded_files = []
         skipped_files = []
@@ -60,7 +60,7 @@ def download_aurora_logs(rds_client, db_instance_identifier, output_dir, days=7,
                     
                     # 如果文件日期早于截止日期，则跳过
                     if file_date.date() < cutoff_date.date():
-                        logger.info(f"跳过旧日志文件: {log_filename} (日期: {date_str})")
+                        logger.info(f"skip old log files: {log_filename} (Date: {date_str})")
                         continue
                     
                     # 检查是否为当天日志

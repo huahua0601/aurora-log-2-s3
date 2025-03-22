@@ -1,46 +1,46 @@
-# Aurora日志同步工具
+# Aurora Logs to S3 Tool
 
-## 简介
+## Introduction
 
-Aurora日志同步工具是一个用于自动下载Amazon Aurora数据库日志并上传到S3存储桶的Python脚本。该工具支持多个Aurora实例，并具有断点续传功能，可以有效避免重复下载和上传已处理过的日志文件。
+Aurora Logs to S3 Tool is a Python script designed to automatically download Amazon Aurora database logs and upload them to an S3 bucket. This tool supports multiple Aurora instances and features incremental upload functionality, effectively avoiding redundant downloads and uploads of previously processed log files.
 
-## 功能特点
+## Features
 
-- 支持多个Aurora数据库实例
-- 自动下载最近指定天数（默认7天）的日志文件
-- 将日志文件上传到指定的S3存储桶
-- 智能处理活跃日志文件（当天日志）和历史日志文件
-- 断点续传功能，避免重复处理已上传的历史日志文件
-- 上传记录保存在S3，确保即使本地记录丢失也能恢复上传状态
+- Support for multiple Aurora database instances
+- Automatic download of logs from the specified number of recent days (default: 7 days)
+- Upload logs to a specified S3 bucket
+- Intelligent handling of active log files (current day logs) and historical log files
+- Incremental upload functionality to avoid reprocessing previously uploaded historical log files
+- Upload records stored in S3, ensuring upload status can be recovered even if local records are lost
 
-## 安装要求
+## Requirements
 
 - Python 3.6+
 - AWS SDK for Python (Boto3)
-- 有权限访问Aurora实例和S3存储桶的AWS凭证
+- AWS credentials with access to Aurora instances and S3 buckets
 
-## 安装步骤
+## Installation
 
-1. 克隆或下载本仓库到本地
+1. Clone or download this repository to your local machine
 
-2. 安装所需依赖：
+2. Install required dependencies:
 
 ```bash
 pip install boto3
 ```
-3. 配置AWS凭证：
-- 使用AWS CLI配置AWS凭证，或者手动创建一个名为`~/.aws/credentials`的文件，并添加以下内容：
+3. Configure AWS credentials:
+- Use AWS CLI to configure AWS credentials, or manually create a file named ~/.aws/credentials and add the following content:
 ```ini
 [default]
 aws_access_key_id = YOUR_ACCESS_KEY_ID
 aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-```
-## 配置说明
-- `config.ini`文件中包含了工具的配置信息，包括Aurora实例ID、S3存储桶名称等。
-- `uploaded_records.json`文件用于记录已上传的日志文件信息，避免重复处理。
-- `log`目录用于存储日志文件。
+ ```
 
-```
+## Configuration
+- The config.ini file contains the tool's configuration information, including Aurora instance IDs, S3 bucket name, etc.
+- The uploaded_records.json file is used to record information about uploaded log files to avoid duplicate processing.
+- The log directory is used to store log files.
+```plaintext
 [aws]
 region_name = us-east-1
 s3_bucket_name = your-s3-bucket-name
@@ -50,59 +50,60 @@ db_instance_identifiers =
     instance-id-1
     instance-id-2
     instance-id-3
-```
-配置项说明：
+ ```
 
-- region_name ：AWS区域名称
-- s3_bucket_name ：用于存储日志的S3存储桶名称
-- db_instance_identifiers ：Aurora实例ID列表，每行一个实例ID
-  
-## 使用方法
-1. 运行脚本：
+Configuration parameters:
+
+- region_name: AWS region name
+- s3_bucket_name: S3 bucket name for storing logs
+- db_instance_identifiers: List of Aurora instance IDs, one per line
+## Usage
+1. Run the script:
 ```bash
 python aurora_logs_to_s3.py
-```
-2. 脚本会自动下载Aurora实例的日志文件，并将其上传到指定的S3存储桶。
-3. 日志文件将按照实例ID和日期进行分类存储。
-4. 上传记录将保存在`uploaded_records.json`文件中，以确保断点续传功能。
-5. 建议设置定时任务，定期执行脚本：
+ ```
+
+2. The script will automatically download Aurora instance log files and upload them to the specified S3 bucket.
+3. Log files will be stored categorized by instance ID and date.
+4. Upload records will be saved in the uploaded_records.json file to ensure incremental upload functionality.
+5. It is recommended to set up a scheduled task to run the script periodically:
 ```bash
-# 示例：每小时执行一次
+# Example: Run once every hour
 0 * * * * cd /path/to/script && python aurora_logs_to_s3.py >> /path/to/logfile.log 2>&1
+ ```
 ```
-## 工作原理
-1. 脚本读取配置文件，获取AWS区域、S3存储桶名称和Aurora实例ID列表
-2. 对于每个Aurora实例：
-   - 从S3获取之前的上传记录（如果存在）
-   - 获取实例的日志文件列表
-   - 下载最近7天的日志文件（跳过已上传的非当天日志文件）
-   - 将日志文件上传到S3：
-     - 当天的活跃日志文件：每次都覆盖上传
-     - 历史日志文件：如果已上传则跳过
-   - 更新上传记录并保存到S3
-   - 清理临时文件
 
-
-## 日志文件存储结构
-日志文件在S3中的存储路径格式为：
+## How It Works
+1. The script reads the configuration file to get AWS region, S3 bucket name, and Aurora instance ID list
+2. For each Aurora instance:
+   - Retrieve previous upload records from S3 (if they exist)
+   - Get the list of log files for the instance
+   - Download logs from the last 7 days (skip already uploaded non-current-day log files)
+   - Upload log files to S3:
+     - Current day active log files: overwrite on each upload
+     - Historical log files: skip if already uploaded
+   - Update upload records and save to S3
+   - Clean up temporary files
+## Log File Storage Structure
+Log files are stored in S3 with the following path format:
 
 ```plaintext
 s3://your-bucket-name/aurora-logs/instance-id/YYYY-MM-DD/log-filename
  ```
 
-上传记录文件在S3中的存储路径格式为：
+Upload record files are stored in S3 with the following path format:
 
 ```plaintext
 s3://your-bucket-name/aurora-logs-records/instance-id_YYYY-MM-DD.json
  ```
 
-## 故障排查
-- 如果脚本无法连接到AWS服务，请检查AWS凭证和网络连接
-- 如果无法下载日志文件，请确保IAM用户/角色有权限访问RDS服务和相关API
-- 如果无法上传到S3，请确保IAM用户/角色有权限访问S3存储桶
-- 查看脚本输出的日志信息，了解详细的错误原因
-## 所需IAM权限
-脚本需要以下最小IAM权限才能正常工作：
+## Troubleshooting
+- If the script cannot connect to AWS services, check your AWS credentials and network connection
+- If log files cannot be downloaded, ensure the IAM user/role has permission to access RDS service and related APIs
+- If files cannot be uploaded to S3, ensure the IAM user/role has permission to access the S3 bucket
+- Check the script's log output for detailed error information
+## Required IAM Permissions
+The script requires the following minimum IAM permissions to work properly:
 
 ```json
 {
@@ -132,9 +133,9 @@ s3://your-bucket-name/aurora-logs-records/instance-id_YYYY-MM-DD.json
 }
  ```
 
-请将 your-bucket-name 替换为您实际使用的S3存储桶名称。
+Please replace your-bucket-name with your actual S3 bucket name.
 
-## 许可证
+## License
 MIT License
 
 Copyright (c) 2023
