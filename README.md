@@ -135,6 +135,70 @@ The script requires the following minimum IAM permissions to work properly:
 
 Please replace your-bucket-name with your actual S3 bucket name.
 
+## install Fluentbit
+```bash
+curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
+ ```
+### we need to create a IAM role for EC2 hosting fluentbit.
+The IAM role should have the following permissions:
+- AmazonS3FullAccess: This policy allows the role to read and write objects to S3 buckets.
+- OpensearchServiceFullAccess: This policy allows the role to interact with Amazon OpenSearch Service.
+1. Attach the role to your EC2 instance:
+   
+   - In the EC2 console, select your instance
+   - Click "Actions" > "Security" > "Modify IAM role"
+   - Select the role you just created from the dropdown list
+   - Click "Save"
+2. The EC2 instance will now use this role's permissions to access AWS resources without needing to configure access keys
+### Mapping the EC2 role to Opensearch Service role.
+![image](images/opensearch1.png)
+![image](images/opensearch2.png)
+
+3. configure fluentbit with the following configuration:
+```
+[SERVICE]
+    Flush          5
+    Daemon         Off
+    Log_Level      trace
+    log_file       /var/log/fluent-bit.log # remove this line when running in production
+
+[INPUT]
+    Name           tail
+    Path           /home/ec2-user/aurora-logs/*/* 
+    Tag            app.logs
+    read_from_head        true
+
+[FILTER]
+    Name           aws
+    Match          *
+    private_ip     true
+    imds_version   v2
+    hostname       true
+    ec2_instance_id    true
+
+[OUTPUT]
+    Name  s3
+    Match *
+    bucket                       {bucket-name} # replace with your bucket name
+    region                       us-east-1
+    total_file_size              250M
+    s3_key_format                /aurora-logs/%Y/%m/%d/$UUID.gz
+    s3_key_format_tag_delimiters .-
+    compression                  gzip
+
+[OUTPUT]
+    Name  opensearch
+    Match *
+    AWS_Region us-east-1
+    Host  vpc-ingestion-test-xxxxx.us-east-1.es.amazonaws.com # replace with your OpenSearch Service domain
+    Port  443
+    Path /
+    AWS_Auth On
+    TLS On
+    Suppress_Type_Name On
+    Index my_index22 # replace with your index name
+```   
+
 ## License
 MIT License
 
