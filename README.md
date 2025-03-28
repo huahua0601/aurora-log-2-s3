@@ -154,50 +154,12 @@ The IAM role should have the following permissions:
 ![image](images/opensearch1.png)
 ![image](images/opensearch2.png)
 
-3. configure fluentbit with the following configuration:
-```
-[SERVICE]
-    Flush          5
-    Daemon         Off
-    Log_Level      trace
-    log_file       /var/log/fluent-bit.log # remove this line when running in production
-
-[INPUT]
-    Name           tail
-    Path           /home/ec2-user/aurora-logs/*/* 
-    Tag            app.logs
-    read_from_head        true
-
-[FILTER]
-    Name           aws
-    Match          *
-    private_ip     true
-    imds_version   v2
-    hostname       true
-    ec2_instance_id    true
-
-[OUTPUT]
-    Name  s3
-    Match *
-    bucket                       {bucket-name} # replace with your bucket name
-    region                       us-east-1
-    total_file_size              250M
-    s3_key_format                /aurora-logs/%Y/%m/%d/$UUID.gz
-    s3_key_format_tag_delimiters .-
-    compression                  gzip
-
-[OUTPUT]
-    Name  opensearch
-    Match *
-    AWS_Region us-east-1
-    Host  vpc-ingestion-test-xxxxx.us-east-1.es.amazonaws.com # replace with your OpenSearch Service domain
-    Port  443
-    Path /
-    AWS_Auth On
-    TLS On
-    Suppress_Type_Name On
-    Index my_index22 # replace with your index name
-```   
+3. configure fluentbit with the following configuration, refer to fluent-bit.conf
+4. configure fluentbit parser with the following configuration, refer to parser.conf
+5. restart fluentbit
+```bash
+systemctl restart fluent-bit
+ ```
 
 ## License
 MIT License
